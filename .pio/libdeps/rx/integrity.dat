@@ -1,1 +1,3 @@
+gyverlibs/GyverBlinker@^1.1.1
 nrf24/RF24@^1.5.0
+gyverlibs/uButton@^1.0.0

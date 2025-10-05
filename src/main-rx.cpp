@@ -1,66 +1,55 @@
-#include <Arduino.h>
 #include <SPI.h>
-#include <nRF24L01.h>
-#include <RF24.h>
+#include "nRF24L01.h"
+#include "RF24.h"
 
-RF24 radio(4, 8);  // инициализировать модуль на пинах 9 и 10 Для Уно
-//RF24 radio(9,53); // Для Меги
+#define CE_PIN 9
+#define CSN_PIN 10
+RF24 radio(CE_PIN, CSN_PIN);
 
-const uint8_t num_channels = 128;
-uint8_t values[num_channels];
+#define CH_NUM 0x60
+#define SIG_POWER RF24_PA_HIGH
+#define SIG_SPEED RF24_250KBPS
+
+const int LED_GREEN = 3;
+const int LED_RED  = 4;
+
+byte pipeNo;
+byte address[][6] = {"1Node","2Node","3Node","4Node","5Node","6Node"};
+uint8_t received_data[1];
+
 void setup() {
-  Serial.begin(9600);
-  //printf_begin();
+  Serial.begin(115200);
+  pinMode(LED_RED, OUTPUT);
+  pinMode(LED_GREEN, OUTPUT);
+
   radio.begin();
-  radio.setAutoAck(false);
+  radio.setAutoAck(1);
+  radio.setRetries(1, 15);
+  radio.setPayloadSize(32);
+  radio.openReadingPipe(1, address[0]);
+  radio.setChannel(CH_NUM);
+  radio.setPALevel(SIG_POWER);
+  radio.setDataRate(SIG_SPEED);
+  radio.powerUp();
   radio.startListening();
 
-  radio.printDetails(); // Вот эта строка напечатает нам что-то, если все правильно соединили.
-  delay(5000);          // И посмотрим на это пять секунд.
-
-  radio.stopListening();
-  int i = 0;    // А это напечатает нам заголовки всех 127 каналов
-  while ( i < num_channels )  {
-    printf("%x", i >> 4);
-    ++i;
-  }
-  printf("\n\r");
-  i = 0;
-  while ( i < num_channels ) {
-    printf("%x", i & 0xf);
-    ++i;
-  }
-  printf("\n\r");
+  digitalWrite(LED_RED, HIGH);
+  digitalWrite(LED_GREEN, HIGH);
 }
-const int num_reps = 100;
 
-void loop(void)
-{
-  memset(values, 0, sizeof(values));
-  int rep_counter = num_reps;
-  while (rep_counter--) {
-    int i = num_channels;
-    while (i--) {
-      radio.setChannel(i);
-      radio.startListening();
-      delayMicroseconds(128);
-      radio.stopListening();
-      if ( radio.testCarrier() )
-        ++values[i];
+void loop() {
+  // слушаем эфир
+  while (radio.available(&pipeNo)) {
+    radio.read(&received_data, sizeof(received_data));
+    uint8_t state = received_data[0];
+
+    // применяем состояние к LED
+    if (state) {
+      digitalWrite(LED_GREEN, HIGH);
+      digitalWrite(LED_RED, LOW);
+    } else {
+      digitalWrite(LED_GREEN, LOW);
+      digitalWrite(LED_RED, HIGH);
     }
   }
-  int i = 0;
-  while ( i < num_channels ) {
-    printf("%x", min(0xf, values[i] & 0xf));
-    ++i;
-  }
-  printf("\n\r");
 }
-int serial_putc( char c, FILE * ) {
-  Serial.write( c );
-  return c;
-}
-
-/*void printf_begin(void) {
-  fdevopen( &serial_putc, 0 );
-}*/
