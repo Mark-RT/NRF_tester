@@ -17,6 +17,8 @@ byte pipeNo;
 byte address[][6] = {"1Node","2Node","3Node","4Node","5Node","6Node"};
 uint8_t received_data[1];
 
+uint32_t last_received_time = 0;
+
 void setup() {
   Serial.begin(115200);
   pinMode(LED_RED, OUTPUT);
@@ -35,6 +37,8 @@ void setup() {
 
   digitalWrite(LED_RED, HIGH);
   digitalWrite(LED_GREEN, HIGH);
+
+  last_received_time = millis();
 }
 
 void loop() {
@@ -51,5 +55,13 @@ void loop() {
       digitalWrite(LED_GREEN, LOW);
       digitalWrite(LED_RED, HIGH);
     }
+    last_received_time = millis();
+  }
+
+  // Проверяем, не истекло ли время ожидания
+  if (millis() - last_received_time > 2200) {
+    // Если да, то выключаем LED
+    digitalWrite(LED_GREEN, HIGH);
+    digitalWrite(LED_RED, HIGH);
   }
 }
